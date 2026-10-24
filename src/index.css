@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: #faf6f0;
+    color: #1f1b18;
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: #1f1b18;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  a:hover {
+    color: #c4452b;
+  }
+  :focus-visible {
+    outline: 3px solid #c4452b;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .h {
+    font-family: Fraunces, Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .btn {
+    font: 600 16px Inter, sans-serif;
+    border: 0;
+    border-radius: 999px;
+    padding: 14px 28px;
+    min-height: 48px;
+    background: #c4452b;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  .btn:hover {
+    background: #ab3a22;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn2 {
+    font: 600 16px Inter, sans-serif;
+    border: 2px solid #1f1b18;
+    border-radius: 999px;
+    padding: 12px 26px;
+    min-height: 48px;
+    background: transparent;
+    color: #1f1b18;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.18s ease, color 0.18s ease;
+  }
+  .btn2:hover {
+    background: #1f1b18;
+    color: #faf6f0;
+  }
+  .btn2:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .chip {
+    font: 500 14px Inter, sans-serif;
+    border: 1.5px solid #d9cfc3;
+    border-radius: 999px;
+    padding: 10px 16px;
+    min-height: 44px;
+    background: #fff;
+    color: #1f1b18;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  }
+  .chip:hover {
+    border-color: #1f1b18;
+  }
+  .chip.on {
+    background: #1f1b18;
+    color: #fff;
+    border-color: #1f1b18;
+  }
+  .chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .lbl {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5e554e;
+    margin: 20px 0 10px;
+  }
+
+  .field {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    border: 1.5px solid #d9cfc3;
+    border-radius: 12px;
+    padding: 0 14px;
+    font: 400 15px Inter, sans-serif;
+    background: #fff;
+    color: #1f1b18;
+  }
+  .field:focus {
+    border-color: #1f1b18;
+    outline: none;
+  }
+}
+
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* Camera / preview filters */
+.f-natural {
+  filter: none;
+}
+.f-bw {
+  filter: grayscale(1) contrast(1.05);
+}
+.f-warm {
+  filter: sepia(0.28) saturate(1.15) brightness(1.03);
+}
+.f-film {
+  filter: sepia(0.18) contrast(1.12) saturate(0.88) brightness(0.98);
+}
+.f-pastel {
+  filter: saturate(0.82) brightness(1.08) contrast(0.94);
+}
+
+@keyframes snap-flash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.snap-flash {
+  animation: snap-flash 0.45s ease-out forwards;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop-in {
+  animation: pop-in 0.28s ease-out both;
+}
