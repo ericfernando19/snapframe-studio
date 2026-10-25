@@ -208,7 +208,10 @@ export default function Studio() {
         shootInto(idx)
         await sleep(420)
       }
-      if (!cancelRef.current) setMode('preview')
+      if (!cancelRef.current) {
+        setMode('preview')
+        setMobileStep(4)
+      }
       setCountdown(null)
     },
     [settings.timer, shootInto],
@@ -435,6 +438,22 @@ export default function Studio() {
   const editSection = (
     <>
       <h2 className="h text-[22px]">Edit</h2>
+
+      {!isDesktop && (
+        <div className="bg-panel rounded-panel p-5 -mx-1 mt-4 flex justify-center">
+          <StripPreview
+            theme={theme}
+            layout={layout}
+            photos={photos}
+            frameColor={frameColor}
+            caption={effectiveCaption}
+            filter={effectiveFilter}
+            brightness={settings.brightness}
+            contrast={settings.contrast}
+            width="min(54vw, 200px)"
+          />
+        </div>
+      )}
 
       <div className="lbl">Filter</div>
       <div className="flex flex-wrap gap-2.5">
