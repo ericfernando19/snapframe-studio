@@ -800,8 +800,32 @@ export default function Studio() {
           </div>
         ) : (
           <div className="bg-white rounded-card p-5 min-h-[60vh]">
-            {mobileStep === 1 && temaSection}
-            {mobileStep === 2 && layoutSection}
+            {mobileStep === 1 && (
+              <div className="flex flex-col items-center gap-5">
+                <StripPreview
+                  theme={theme}
+                  layout={layout}
+                  photos={photos}
+                  liveClips={settings.liveEnabled ? liveClips : []}
+                  interactive={false}
+                  width="min(46vw, 180px)"
+                />
+                {temaSection}
+              </div>
+            )}
+            {mobileStep === 2 && (
+              <div className="flex flex-col items-center gap-5">
+                <StripPreview
+                  theme={theme}
+                  layout={layout}
+                  photos={photos}
+                  liveClips={settings.liveEnabled ? liveClips : []}
+                  interactive={false}
+                  width="min(46vw, 180px)"
+                />
+                {layoutSection}
+              </div>
+            )}
             {mobileStep === 3 && <div className="bg-panel rounded-panel p-5 -mx-1">{fotoSection}</div>}
             {mobileStep === 4 && editSection}
           </div>
