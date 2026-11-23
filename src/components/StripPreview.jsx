@@ -51,10 +51,13 @@ export default function StripPreview({
     ((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) /
       layout.w) *
     100
-  const headerCqw = (Math.min(...rects.map((r) => r.y)) / layout.w) * 100
+  const titleBottom = Math.min(...rects.map((r) => r.y))
+  const titleTop = layout.design ? 0 : Math.min(...layout.rects.map((r) => r.y))
+  const titleCenterPct = (((titleTop + titleBottom) / 2) / layout.h) * 100
+  const headerCqw = ((titleBottom - titleTop) / layout.w) * 100
   const titleCqw = Math.max(
-    4.2,
-    Math.min(baseTitleCqw * 1.15, (headerCqw / (titleLines * 1.18)) * 0.82),
+    3.3,
+    Math.min(baseTitleCqw * 1.15, (headerCqw / (titleLines * 1.18)) * 0.9),
   )
 
   const [playing, setPlaying] = useState(null)
@@ -293,7 +296,7 @@ export default function StripPreview({
           style={{
             position: 'absolute',
             left: '50%',
-            top: `${(theme.titleY || 0.07) * 100}%`,
+            top: `${titleCenterPct}%`,
             transform: 'translate(-50%, -50%)',
             width: '92%',
             textAlign: 'center',

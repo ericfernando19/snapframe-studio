@@ -136,6 +136,8 @@ export async function exportLiveVideo({
     if (signal?.aborted) throw new Error('cancelled')
     const t = frameIndex / fps
     drawBackground(ctx, theme, width, height)
+    const titleBottom = Math.min(...rects.map((r) => r.y))
+    const titleTop = layout.design ? 0 : Math.min(...layout.rects.map((r) => r.y))
     drawTitle(
       ctx,
       { ...theme, title: themeTitle(theme, layout) },
@@ -144,7 +146,9 @@ export async function exportLiveVideo({
       decoScale,
       {
         maxWidth: width - 28 * decoScale,
-        maxHeight: Math.max(48 * decoScale, Math.min(...rects.map((r) => r.y)) * scale - 10 * scale),
+        maxHeight: Math.max(48 * decoScale, (titleBottom - titleTop) * scale * 0.9),
+        centerY: ((titleTop + titleBottom) / 2) * scale,
+        minFontSize: width * 0.033,
       },
     )
 

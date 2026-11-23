@@ -142,16 +142,36 @@ export function drawTitle(ctx, theme, w, h, scale, opts = {}) {
   let fontSize = parseFloat(currentFont.match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32
   ctx.save()
   ctx.font = currentFont
-  const widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
+  let widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
   const neededHeight = lines.length * fontSize * 1.08
   if (widest > 0) {
     const factor = Math.min(1.15, maxWidth / widest, maxHeight / neededHeight)
     if (Number.isFinite(factor) && factor > 0 && Math.abs(factor - 1) > 0.02) {
       fontSize = Math.max(7, fontSize * factor)
-      currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
     }
   }
+
+  // jangan terlalu kecil (mis. film roll di strip 4)
+  if (opts.minFontSize && fontSize < opts.minFontSize) {
+    fontSize = opts.minFontSize
+  }
+
+  currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
   ctx.font = currentFont
+  widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
+  // jika terlalu lebar, kecilkan agar tetap dalam bingkai
+  if (widest > maxWidth) {
+    fontSize *= maxWidth / widest
+    currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
+    ctx.font = currentFont
+  }
+  const maxByHeight = maxHeight / (lines.length * 1.08)
+  if (fontSize > maxByHeight) {
+    fontSize = maxByHeight
+    currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
+    ctx.font = currentFont
+  }
+
   ctx.fillStyle = theme.titleColor || theme.caption || '#111'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -160,9 +180,9 @@ export function drawTitle(ctx, theme, w, h, scale, opts = {}) {
     ctx.shadowBlur = 6
   }
   const lineHeight = fontSize * 1.06
-  const startY = (theme.titleY || 0.07) * h
+  const startY = opts.centerY || (theme.titleY || 0.07) * h
   lines.forEach((line, i) => {
-    ctx.fillText(line, w / 2, startY + i * lineHeight)
+    ctx.fillText(line, w / 2, startY + (i - (lines.length - 1) / 2) * lineHeight)
   })
   ctx.restore()
 }
