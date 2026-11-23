@@ -83,6 +83,38 @@ export const LAYOUTS = [
       { x: 530, y: 70, w: 400, h: 450 },
     ],
   },
+  // layout strip desain (rasio 2:3, ruang judul & footer)
+  {
+    id: 'design-3',
+    name: 'Strip 3 Desain',
+    slots: 3,
+    orientation: 'portrait',
+    design: true,
+    w: 600,
+    h: 900,
+    caption: { y: 870, size: 24 },
+    rects: [
+      { x: 14, y: 92, w: 572, h: 235.33 },
+      { x: 14, y: 337.33, w: 572, h: 235.33 },
+      { x: 14, y: 582.67, w: 572, h: 235.33 },
+    ],
+  },
+  {
+    id: 'design-4',
+    name: 'Strip 4 Desain',
+    slots: 4,
+    orientation: 'portrait',
+    design: true,
+    w: 600,
+    h: 900,
+    caption: { y: 870, size: 24 },
+    rects: [
+      { x: 14, y: 92, w: 572, h: 174 },
+      { x: 14, y: 276, w: 572, h: 174 },
+      { x: 14, y: 460, w: 572, h: 174 },
+      { x: 14, y: 644, w: 572, h: 174 },
+    ],
+  },
 ]
 
 export const getLayout = (id) => LAYOUTS.find((l) => l.id === id) || LAYOUTS[0]

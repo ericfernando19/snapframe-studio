@@ -135,21 +135,39 @@ export default function StripPreview({
         const isActive = interactive && activeSlot === i
         const isLive = hasLive(i)
         const isPlaying = autoplay ? isLive : playing === i
+        const fs = theme.frameStyle
+        const borderMap = { rounded: 5, square: 3, arch: 5, neon: 3, newspaper: 2, film: 2 }
+        const borderW = borderMap[fs] || 0
+        const isPolaroid = fs === 'polaroid'
+        const isGls = fs === 'gls'
         const style = {
           position: 'absolute',
           left: `${(r.x / layout.w) * 100}%`,
           top: `${(r.y / layout.h) * 100}%`,
           width: `${(r.w / layout.w) * 100}%`,
           height: `${(r.h / layout.h) * 100}%`,
-          borderRadius: '6px',
+          borderRadius:
+            fs === 'arch'
+              ? '38% 38% 6px 6px'
+              : `${theme.slotRadius || 6}px`,
           overflow: 'hidden',
-          background: theme.slotBg,
-          padding: 0,
-          border: isActive ? '3px solid #C4452B' : '2px solid transparent',
+          background: isGls
+            ? 'linear-gradient(135deg,#fff,#b9c7ff 50%,#fff)'
+            : theme.slotBg,
+          padding: isPolaroid ? '4% 4% 12%' : isGls ? '3%' : 0,
+          border: borderW ? `${borderW}px solid ${theme.borderColor || '#111'}` : 'none',
+          boxShadow:
+            fs === 'neon'
+              ? `0 0 8px ${theme.borderColor}, inset 0 0 6px ${theme.borderColor}`
+              : ['polaroid', 'rounded', 'gls', 'arch'].includes(fs)
+              ? '0 3px 8px rgba(0,0,0,.18)'
+              : 'none',
           boxSizing: 'border-box',
           cursor: interactive ? 'pointer' : 'default',
           transition: 'border-color .18s ease',
           userSelect: 'none',
+          outline: isActive ? '3px solid #C4452B' : 'none',
+          outlineOffset: 1,
         }
 
         return (
@@ -270,8 +288,8 @@ export default function StripPreview({
             textAlign: 'center',
             color: theme.titleColor || theme.caption,
             fontFamily: (theme.titleFont || '').split(' ').slice(2).join(' ') || theme.captionFont || 'Inter',
-            fontSize: `${((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) / layout.w) * 100 * 0.6}cqw`,
-            fontWeight: 600,
+            fontSize: `${((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) / layout.w) * 100}cqw`,
+            fontWeight: (theme.titleFont || '').match(/^(\d+)/)?.[1] || 600,
             lineHeight: 1.05,
             textShadow: theme.titleShadow ? '0 2px 4px rgba(0,0,0,.35)' : 'none',
             whiteSpace: 'pre-line',
@@ -297,9 +315,9 @@ export default function StripPreview({
             background: theme.footerBg && theme.footerBg !== 'transparent' ? theme.footerBg : 'transparent',
             border: theme.footerBorder ? `1.5px dashed ${theme.footerBorder}` : 'none',
             color: theme.footerColor || theme.caption,
-            fontFamily: `${theme.captionFont || 'Inter'}, sans-serif`,
-            fontSize: `${(10 / layout.w) * 100 * 1.4}cqw`,
-            fontWeight: 600,
+            fontFamily: (theme.footerFont || '').split(' ').slice(2).join(' ') || `${theme.captionFont || 'Inter'}, sans-serif`,
+            fontSize: `${((parseFloat((theme.footerFont || '12').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 12) / layout.w) * 100}cqw`,
+            fontWeight: (theme.footerFont || '').match(/^(\d+)/)?.[1] || 600,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',

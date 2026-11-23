@@ -57,12 +57,19 @@ export function StudioProvider({ children }) {
   const selectTheme = useCallback(
     (themeId) => {
       const t = getTheme(themeId)
-      setSettings((s) => ({
-        ...s,
-        themeId,
-        frameColor: t.frame,
-        filter: t.filter,
-      }))
+      setSettings((s) => {
+        const fallback = s.layoutId?.startsWith('design-') ? 'strip-3' : s.layoutId
+        return {
+          ...s,
+          themeId,
+          frameColor: t.frame,
+          filter: t.filter,
+          layoutId: t.layoutId || fallback,
+        }
+      })
+      const targetLayout = getLayout(t.layoutId || 'strip-3')
+      setPhotos((prev) => prev.slice(0, targetLayout.slots))
+      setLiveClips((prev) => prev.slice(0, targetLayout.slots))
     },
     [],
   )

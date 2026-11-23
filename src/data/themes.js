@@ -98,6 +98,7 @@ export const THEMES = [
   // ---- 10 tema desain (dari mockup) ----
   {
     id: 'coquette',
+    layoutId: 'design-3',
     name: 'Coquette Bow',
     desc: 'Manis dengan pita, hati, dan motif gingham.',
     swatch: '#FFC9D6',
@@ -125,6 +126,7 @@ export const THEMES = [
   },
   {
     id: 'y2k-chrome',
+    layoutId: 'design-3',
     name: 'Y2K Chrome',
     desc: 'Ungu perak berkilau dengan bintang.',
     swatch: '#C9B6FF',
@@ -152,6 +154,7 @@ export const THEMES = [
   },
   {
     id: 'film-roll',
+    layoutId: 'design-3',
     name: 'Film Roll',
     desc: 'Roll film analog dengan lubang sprocket.',
     swatch: '#0E0E0E',
@@ -177,6 +180,7 @@ export const THEMES = [
   },
   {
     id: 'sunset-70s',
+    layoutId: 'design-3',
     name: '70s Sunset',
     desc: 'Pelangi, matahari, dan warna hangat.',
     swatch: '#F6D7A7',
@@ -202,6 +206,7 @@ export const THEMES = [
   },
   {
     id: 'clean-4cuts',
+    layoutId: 'design-4',
     name: 'Clean 4 Cuts',
     desc: 'Putih bersih ala photobooth Korea.',
     swatch: '#E6E7EA',
@@ -227,6 +232,7 @@ export const THEMES = [
   },
   {
     id: 'daily-snap',
+    layoutId: 'design-3',
     name: 'Daily Snap',
     desc: 'Koran edisi khusus hitam putih.',
     swatch: '#CFCAC0',
@@ -253,6 +259,7 @@ export const THEMES = [
   },
   {
     id: 'angel-clouds',
+    layoutId: 'design-3',
     name: 'Angel Clouds',
     desc: 'Langit biru, awan, dan kilau bintang.',
     swatch: '#BFE1FF',
@@ -278,6 +285,7 @@ export const THEMES = [
   },
   {
     id: 'matcha-daisy',
+    layoutId: 'design-3',
     name: 'Matcha Daisy',
     desc: 'Hijau sage dengan bunga daisy.',
     swatch: '#A8BFA3',
@@ -304,6 +312,7 @@ export const THEMES = [
   },
   {
     id: 'arcade-neon',
+    layoutId: 'design-3',
     name: 'Arcade Neon',
     desc: 'Gelap dengan garis neon pink dan cyan.',
     swatch: '#07071A',
@@ -330,6 +339,7 @@ export const THEMES = [
   },
   {
     id: 'pink-era',
+    layoutId: 'design-3',
     name: 'Pink Era',
     desc: 'Pink menyala dengan kilau dan hati.',
     swatch: '#FF4F9A',
@@ -357,3 +367,4 @@ export const THEMES = [
 ]
 
 export const getTheme = (id) => THEMES.find((t) => t.id === id) || THEMES[0]
+

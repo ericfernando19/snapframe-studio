@@ -7,6 +7,7 @@ function fontSize(font, fallback = 32) {
 
 export function themeRects(layout, theme) {
   const rects = layout.rects
+  if (layout.design) return rects
   if (!theme || (!theme.title && !theme.footer)) return rects
 
   const base = layout.w / 600

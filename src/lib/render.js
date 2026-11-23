@@ -1,6 +1,7 @@
 import { filterStyle } from './preview.js'
 import { drawBackground, drawDecorations, drawTitle, drawFooter } from './decorations.js'
 import { themeRects } from './themeLayout.js'
+import { slotStyle } from './slotStyle.js'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -96,7 +97,7 @@ export async function renderStrip({
 
   const decoScale = canvas.width / 600
 
-  drawBackground(ctx, theme, canvas.width, canvas.height)
+  drawBackground(ctx, { ...theme, frame: frameColor || theme.frame }, canvas.width, canvas.height)
 
   // sprocket film
   if (theme.frameStyle === 'film') {
@@ -122,25 +123,38 @@ export async function renderStrip({
   // judul atas (tema desain)
   drawTitle(ctx, theme, canvas.width, canvas.height, decoScale)
 
-  const slotRadius = (theme.slotRadius || 6) * decoScale
-  const slotBorderWidth = (theme.slotBorderWidth || 2) * decoScale
-  const borderColor = theme.borderColor || frameColor || theme.frame
-  const pathFn = theme.frameStyle === 'arch' ? archPath : roundedPath
-  const shadowStyles = ['polaroid', 'rounded', 'gls', 'arch']
   const rects = themeRects(layout, theme)
 
   rects.forEach((rect, i) => {
     const img = images[i]
-    const dx = rect.x * scale
-    const dy = rect.y * scale
-    const dw = rect.w * scale
-    const dh = rect.h * scale
+    const s = slotStyle(theme, rect, theme.frameStyle ? decoScale : scale)
+    const outer = {
+      x: s.outer.x * scale,
+      y: s.outer.y * scale,
+      w: s.outer.w * scale,
+      h: s.outer.h * scale,
+    }
+    const inner = {
+      x: s.inner.x * scale,
+      y: s.inner.y * scale,
+      w: s.inner.w * scale,
+      h: s.inner.h * scale,
+    }
+    const pathFn = s.styleName === 'arch' ? archPath : roundedPath
 
     // bingkai slot
     ctx.save()
-    pathFn(ctx, dx, dy, dw, dh, slotRadius)
-    ctx.fillStyle = theme.slotBg
-    if (shadowStyles.includes(theme.frameStyle)) {
+    pathFn(ctx, outer.x, outer.y, outer.w, outer.h, s.radius)
+    if (s.styleName === 'gls') {
+      const g = ctx.createLinearGradient(outer.x, outer.y, outer.x + outer.w, outer.y + outer.h)
+      g.addColorStop(0, '#ffffff')
+      g.addColorStop(0.5, '#b9c7ff')
+      g.addColorStop(1, '#ffffff')
+      ctx.fillStyle = g
+    } else {
+      ctx.fillStyle = s.bg || theme.slotBg
+    }
+    if (s.shadow) {
       ctx.shadowColor = 'rgba(0,0,0,.18)'
       ctx.shadowBlur = 8 * decoScale
       ctx.shadowOffsetY = 3 * decoScale
@@ -149,29 +163,29 @@ export async function renderStrip({
     ctx.restore()
 
     ctx.save()
-    pathFn(ctx, dx, dy, dw, dh, slotRadius)
+    pathFn(ctx, inner.x, inner.y, inner.w, inner.h, s.radius)
     ctx.clip()
     if (supportsFilter && cssFilter) ctx.filter = cssFilter
     if (img) {
-      drawCover(ctx, img, dx, dy, dw, dh)
+      drawCover(ctx, img, inner.x, inner.y, inner.w, inner.h)
     } else {
       ctx.fillStyle = theme.slotBg === '#33302C' ? '#8A817A' : '#5E554E'
       ctx.font = `500 ${44 * scale}px Inter, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(`Foto ${i + 1}`, dx + dw / 2, dy + dh / 2)
+      ctx.fillText(`Foto ${i + 1}`, inner.x + inner.w / 2, inner.y + inner.h / 2)
     }
     if (supportsFilter) ctx.filter = 'none'
     ctx.restore()
 
     // border
-    if (slotBorderWidth > 0) {
+    if (s.borderWidth > 0) {
       ctx.save()
-      pathFn(ctx, dx, dy, dw, dh, slotRadius)
-      ctx.lineWidth = slotBorderWidth
-      ctx.strokeStyle = borderColor
-      if (theme.frameStyle === 'neon') {
-        ctx.shadowColor = borderColor
+      pathFn(ctx, outer.x, outer.y, outer.w, outer.h, s.radius)
+      ctx.lineWidth = s.borderWidth
+      ctx.strokeStyle = s.borderColor
+      if (s.glow) {
+        ctx.shadowColor = s.borderColor
         ctx.shadowBlur = 12 * decoScale
       }
       ctx.stroke()
@@ -183,12 +197,12 @@ export async function renderStrip({
       const barH = 16 * decoScale
       ctx.save()
       ctx.fillStyle = '#111'
-      ctx.fillRect(dx, dy + dh - barH, dw, barH)
+      ctx.fillRect(outer.x, outer.y + outer.h - barH, outer.w, barH)
       ctx.fillStyle = '#F4F0E6'
       ctx.font = `500 ${8 * decoScale}px DM Mono, monospace`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
-      ctx.fillText(theme.slotCaptions[i], dx + 6 * decoScale, dy + dh - barH / 2)
+      ctx.fillText(theme.slotCaptions[i], outer.x + 6 * decoScale, outer.y + outer.h - barH / 2)
       ctx.restore()
     }
   })

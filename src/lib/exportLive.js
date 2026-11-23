@@ -2,6 +2,7 @@ import { filterStyle } from './preview.js'
 import { LIVE_FPS } from './live.js'
 import { drawBackground, drawTitle, drawFooter, drawDecorations } from './decorations.js'
 import { themeRects } from './themeLayout.js'
+import { slotStyle } from './slotStyle.js'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -31,6 +32,18 @@ function drawCover(ctx, img, dx, dy, dw, dh) {
     sy = (ih - sh) / 2
   }
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)
+}
+
+function archPath(ctx, x, y, w, h, r) {
+  const top = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x, y + top)
+  ctx.arcTo(x, y, x + w, y, top)
+  ctx.arcTo(x + w, y, x + w, y + h, top)
+  ctx.lineTo(x + w, y + h - 10)
+  ctx.arcTo(x + w, y + h, x, y + h, 10)
+  ctx.arcTo(x, y + h, x, y, 10)
+  ctx.closePath()
 }
 
 function roundedPath(ctx, x, y, w, h, r) {
@@ -99,7 +112,6 @@ export async function exportLiveVideo({
   const durationSec = 3
   const totalFrames = durationSec * fps
 
-  const frameColor = settings.frameColor || theme.frame
   const caption = settings.caption || ''
   const filter = settings.filter && settings.filter !== 'natural' ? settings.filter : theme.filter || 'natural'
   const brightness = settings.brightness || 100
@@ -114,9 +126,6 @@ export async function exportLiveVideo({
   const scale = width / layout.w
   const decoScale = width / 600
   const rects = themeRects(layout, theme)
-  const slotRadius = (theme.slotRadius || 6) * decoScale
-  const slotBorderWidth = (theme.slotBorderWidth || 2) * decoScale
-  const borderColor = theme.borderColor || frameColor
 
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -131,20 +140,35 @@ export async function exportLiveVideo({
 
     rects.forEach((rect, i) => {
       const clip = liveClips[i]
-      const dx = rect.x * scale
-      const dy = rect.y * scale
-      const dw = rect.w * scale
-      const dh = rect.h * scale
+      const s = slotStyle(theme, rect, theme.frameStyle ? decoScale : scale)
+      const outer = {
+        x: s.outer.x * scale,
+        y: s.outer.y * scale,
+        w: s.outer.w * scale,
+        h: s.outer.h * scale,
+      }
+      const inner = {
+        x: s.inner.x * scale,
+        y: s.inner.y * scale,
+        w: s.inner.w * scale,
+        h: s.inner.h * scale,
+      }
+      const pathFn = s.styleName === 'arch' ? archPath : roundedPath
 
       // background slot
       ctx.save()
-      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
-      ctx.fillStyle = theme.slotBg
+      pathFn(ctx, outer.x, outer.y, outer.w, outer.h, s.radius)
+      ctx.fillStyle = s.bg || theme.slotBg
+      if (s.shadow) {
+        ctx.shadowColor = 'rgba(0,0,0,.18)'
+        ctx.shadowBlur = 8 * decoScale
+        ctx.shadowOffsetY = 3 * decoScale
+      }
       ctx.fill()
       ctx.restore()
 
       ctx.save()
-      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+      pathFn(ctx, inner.x, inner.y, inner.w, inner.h, s.radius)
       ctx.clip()
       if (cssFilter && cssFilter !== 'none') ctx.filter = cssFilter
 
@@ -156,31 +180,44 @@ export async function exportLiveVideo({
         )
         const frameBmp = clip.frames[idx]
         if (frameBmp) {
-          drawCover(ctx, frameBmp, dx, dy, dw, dh)
+          drawCover(ctx, frameBmp, inner.x, inner.y, inner.w, inner.h)
           drawn = true
         }
       }
       if (!drawn) {
         const img = images[i]
-        if (img) drawCover(ctx, img, dx, dy, dw, dh)
+        if (img) drawCover(ctx, img, inner.x, inner.y, inner.w, inner.h)
         else {
           ctx.fillStyle = theme.slotBg
-          ctx.fillRect(dx, dy, dw, dh)
+          ctx.fillRect(inner.x, inner.y, inner.w, inner.h)
         }
       }
       ctx.filter = 'none'
       ctx.restore()
 
-      if (slotBorderWidth > 0) {
+      if (s.borderWidth > 0) {
         ctx.save()
-        roundedPath(ctx, dx, dy, dw, dh, slotRadius)
-        ctx.lineWidth = slotBorderWidth
-        ctx.strokeStyle = borderColor
-        if (theme.frameStyle === 'neon') {
-          ctx.shadowColor = borderColor
+        pathFn(ctx, outer.x, outer.y, outer.w, outer.h, s.radius)
+        ctx.lineWidth = s.borderWidth
+        ctx.strokeStyle = s.borderColor
+        if (s.glow) {
+          ctx.shadowColor = s.borderColor
           ctx.shadowBlur = 12 * decoScale
         }
         ctx.stroke()
+        ctx.restore()
+      }
+
+      if (theme.slotCaptions && theme.slotCaptions[i]) {
+        const barH = 16 * decoScale
+        ctx.save()
+        ctx.fillStyle = '#111'
+        ctx.fillRect(outer.x, outer.y + outer.h - barH, outer.w, barH)
+        ctx.fillStyle = '#F4F0E6'
+        ctx.font = `500 ${8 * decoScale}px DM Mono, monospace`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(theme.slotCaptions[i], outer.x + 6 * decoScale, outer.y + outer.h - barH / 2)
         ctx.restore()
       }
     })
