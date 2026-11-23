@@ -1,6 +1,6 @@
 import { filterStyle } from './preview.js'
 import { drawBackground, drawDecorations, drawTitle, drawFooter } from './decorations.js'
-import { themeRects } from './themeLayout.js'
+import { themeRects, themeTitle } from './themeLayout.js'
 import { slotStyle } from './slotStyle.js'
 
 function loadImage(src) {
@@ -121,7 +121,13 @@ export async function renderStrip({
   await ensureFonts(theme)
 
   // judul atas (tema desain)
-  drawTitle(ctx, theme, canvas.width, canvas.height, decoScale)
+  drawTitle(
+    ctx,
+    { ...theme, title: themeTitle(theme, layout) },
+    canvas.width,
+    canvas.height,
+    decoScale,
+  )
 
   const rects = themeRects(layout, theme)
 

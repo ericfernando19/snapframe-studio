@@ -1,7 +1,7 @@
 import { filterStyle } from './preview.js'
 import { LIVE_FPS } from './live.js'
 import { drawBackground, drawTitle, drawFooter, drawDecorations } from './decorations.js'
-import { themeRects } from './themeLayout.js'
+import { themeRects, themeTitle } from './themeLayout.js'
 import { slotStyle } from './slotStyle.js'
 
 function loadImage(src) {
@@ -136,7 +136,7 @@ export async function exportLiveVideo({
     if (signal?.aborted) throw new Error('cancelled')
     const t = frameIndex / fps
     drawBackground(ctx, theme, width, height)
-    drawTitle(ctx, theme, width, height, decoScale)
+    drawTitle(ctx, { ...theme, title: themeTitle(theme, layout) }, width, height, decoScale)
 
     rects.forEach((rect, i) => {
       const clip = liveClips[i]

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { THEMES } from '../data/themes.js'
+import { readableText } from '../lib/color.js'
 
 const STEPS = [
   {
@@ -119,6 +120,7 @@ export default function Beranda() {
                 style={{
                   background: t.swatch,
                   border: t.swatchBorder ? '1px solid #E6DED3' : 'none',
+                  color: readableText(t.swatch),
                 }}
               >
                 <span className="font-semibold text-[18px]">{t.name}</span>

@@ -5,6 +5,15 @@ function fontSize(font, fallback = 32) {
   return m ? Number(m[1]) : fallback
 }
 
+export function themeTitle(theme, layout) {
+  if (!theme?.title) return ''
+  let title = theme.title
+  if (/\bcuts\b/i.test(title)) {
+    title = title.replace(/\b\d+\b/, String(layout.slots))
+  }
+  return title
+}
+
 export function themeRects(layout, theme) {
   const rects = layout.rects
   if (layout.design) return rects

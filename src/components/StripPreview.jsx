@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { filterStyle, defaultCaption } from '../lib/preview.js'
-import { themeRects } from '../lib/themeLayout.js'
+import { themeRects, themeTitle } from '../lib/themeLayout.js'
 
 function drawCover(ctx, img, dx, dy, dw, dh) {
   const iw = img.naturalWidth || img.width || img.videoWidth
@@ -45,6 +45,7 @@ export default function StripPreview({
   const cssFilter = filterStyle(filter, brightness, contrast)
   const captionText = caption || defaultCaption()
   const rects = themeRects(layout, theme)
+  const titleText = themeTitle(theme, layout)
 
   const [playing, setPlaying] = useState(null)
   const canvasRefs = useRef([])
@@ -276,7 +277,7 @@ export default function StripPreview({
         )
       })}
 
-      {theme.title && (
+      {titleText && (
         <div
           aria-hidden="true"
           style={{
@@ -298,7 +299,7 @@ export default function StripPreview({
             zIndex: 2,
           }}
         >
-          {theme.title}
+          {titleText}
         </div>
       )}
 

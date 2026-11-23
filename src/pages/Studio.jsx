@@ -8,6 +8,7 @@ import { defaultCaption } from '../lib/preview.js'
 import Stepper from '../components/Stepper.jsx'
 import CameraView from '../components/CameraView.jsx'
 import useMediaQuery from '../hooks/useMediaQuery.js'
+import { readableText } from '../lib/color.js'
 import {
   captureFrame,
   cameraSupported,
@@ -501,7 +502,7 @@ export default function Studio() {
                 background: t.swatch,
                 borderRadius: 16,
                 minHeight: 64,
-                color: t.id === 'dark' ? '#fff' : '#1F1B18',
+                color: readableText(t.swatch),
                 border: selected ? '3px solid #C4452B' : '1.5px solid #D9CFC3',
                 fontWeight: selected ? 600 : 500,
               }}
