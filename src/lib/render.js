@@ -120,6 +120,8 @@ export async function renderStrip({
 
   await ensureFonts(theme)
 
+  const rects = themeRects(layout, theme)
+
   // judul atas (tema desain)
   drawTitle(
     ctx,
@@ -127,9 +129,11 @@ export async function renderStrip({
     canvas.width,
     canvas.height,
     decoScale,
+    {
+      maxWidth: canvas.width - 28 * decoScale,
+      maxHeight: Math.max(48 * decoScale, Math.min(...rects.map((r) => r.y)) * scale - 10 * scale),
+    },
   )
-
-  const rects = themeRects(layout, theme)
 
   rects.forEach((rect, i) => {
     const img = images[i]

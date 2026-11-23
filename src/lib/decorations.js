@@ -131,11 +131,27 @@ export function drawDecorations(ctx, decorations, scale) {
   for (const d of decorations) drawDecoration(ctx, d, scale)
 }
 
-export function drawTitle(ctx, theme, w, h, scale) {
+export function drawTitle(ctx, theme, w, h, scale, opts = {}) {
   if (!theme.title) return
   const font = theme.titleFont || '600 32px Inter, sans-serif'
+  const lines = String(theme.title).split('\n')
+  const maxWidth = opts.maxWidth || w * 0.9
+  const maxHeight = opts.maxHeight || h * 0.12
+
+  let currentFont = scaleFont(font, scale)
+  let fontSize = parseFloat(currentFont.match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32
   ctx.save()
-  ctx.font = scaleFont(font, scale)
+  ctx.font = currentFont
+  const widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
+  const neededHeight = lines.length * fontSize * 1.08
+  if (widest > 0) {
+    const factor = Math.min(1.35, maxWidth / widest, maxHeight / neededHeight)
+    if (Number.isFinite(factor) && factor > 0 && Math.abs(factor - 1) > 0.02) {
+      fontSize = Math.max(7, fontSize * factor)
+      currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
+    }
+  }
+  ctx.font = currentFont
   ctx.fillStyle = theme.titleColor || theme.caption || '#111'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -143,8 +159,7 @@ export function drawTitle(ctx, theme, w, h, scale) {
     ctx.shadowColor = 'rgba(0,0,0,.35)'
     ctx.shadowBlur = 6
   }
-  const lines = String(theme.title).split('\n')
-  const lineHeight = (parseFloat(scaleFont(font, scale).match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) * 1.05
+  const lineHeight = fontSize * 1.06
   const startY = (theme.titleY || 0.07) * h
   lines.forEach((line, i) => {
     ctx.fillText(line, w / 2, startY + i * lineHeight)
@@ -158,7 +173,7 @@ function scaleFont(font, scale) {
 
 export function drawFooter(ctx, theme, w, h, scale) {
   if (!theme.footer) return
-  const y = (theme.footerY || 0.92) * h
+  const y = (theme.footerY || 0.93) * h
   ctx.save()
   ctx.font = scaleFont(theme.footerFont || '500 12px DM Mono, monospace', scale)
   const text = theme.footer

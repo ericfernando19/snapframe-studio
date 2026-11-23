@@ -46,6 +46,16 @@ export default function StripPreview({
   const captionText = caption || defaultCaption()
   const rects = themeRects(layout, theme)
   const titleText = themeTitle(theme, layout)
+  const titleLines = titleText ? titleText.split('\n').length : 1
+  const baseTitleCqw =
+    ((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) /
+      layout.w) *
+    100
+  const headerCqw = (Math.min(...rects.map((r) => r.y)) / layout.w) * 100
+  const titleCqw = Math.max(
+    4.2,
+    Math.min(baseTitleCqw * 1.2, (headerCqw / (titleLines * 1.18)) * 0.82),
+  )
 
   const [playing, setPlaying] = useState(null)
   const canvasRefs = useRef([])
@@ -289,7 +299,7 @@ export default function StripPreview({
             textAlign: 'center',
             color: theme.titleColor || theme.caption,
             fontFamily: (theme.titleFont || '').split(' ').slice(2).join(' ') || theme.captionFont || 'Inter',
-            fontSize: `${((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) / layout.w) * 100}cqw`,
+            fontSize: `${titleCqw}cqw`,
             fontWeight: (theme.titleFont || '').match(/^(\d+)/)?.[1] || 600,
             lineHeight: 1.05,
             textShadow: theme.titleShadow ? '0 2px 4px rgba(0,0,0,.35)' : 'none',
@@ -309,7 +319,7 @@ export default function StripPreview({
           style={{
             position: 'absolute',
             left: '50%',
-            top: '92%',
+            top: '93%',
             transform: 'translate(-50%, -50%)',
             padding: '2px 8px',
             borderRadius: 999,

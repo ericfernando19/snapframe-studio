@@ -136,7 +136,17 @@ export async function exportLiveVideo({
     if (signal?.aborted) throw new Error('cancelled')
     const t = frameIndex / fps
     drawBackground(ctx, theme, width, height)
-    drawTitle(ctx, { ...theme, title: themeTitle(theme, layout) }, width, height, decoScale)
+    drawTitle(
+      ctx,
+      { ...theme, title: themeTitle(theme, layout) },
+      width,
+      height,
+      decoScale,
+      {
+        maxWidth: width - 28 * decoScale,
+        maxHeight: Math.max(48 * decoScale, Math.min(...rects.map((r) => r.y)) * scale - 10 * scale),
+      },
+    )
 
     rects.forEach((rect, i) => {
       const clip = liveClips[i]
