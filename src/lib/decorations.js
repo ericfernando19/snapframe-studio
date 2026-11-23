@@ -135,8 +135,6 @@ export function drawTitle(ctx, theme, w, h, scale) {
   if (!theme.title) return
   const font = theme.titleFont || '600 32px Inter, sans-serif'
   ctx.save()
-  ctx.font = font.includes('px') ? font : `${font}`
-  // scale font size by scale
   ctx.font = scaleFont(font, scale)
   ctx.fillStyle = theme.titleColor || theme.caption || '#111'
   ctx.textAlign = 'center'
@@ -145,7 +143,12 @@ export function drawTitle(ctx, theme, w, h, scale) {
     ctx.shadowColor = 'rgba(0,0,0,.35)'
     ctx.shadowBlur = 6
   }
-  ctx.fillText(theme.title, w / 2, (theme.titleY || 0.07) * h)
+  const lines = String(theme.title).split('\n')
+  const lineHeight = (parseFloat(scaleFont(font, scale).match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) * 1.05
+  const startY = (theme.titleY || 0.07) * h
+  lines.forEach((line, i) => {
+    ctx.fillText(line, w / 2, startY + i * lineHeight)
+  })
   ctx.restore()
 }
 
@@ -166,13 +169,28 @@ export function drawFooter(ctx, theme, w, h, scale) {
   const bh = 18 * scale + padY * 2
   const x = (w - bw) / 2
   const by = y - bh / 2
-  ctx.fillStyle = theme.footerBg || 'rgba(0,0,0,0.7)'
-  if (typeof ctx.roundRect === 'function') {
-    ctx.beginPath()
-    ctx.roundRect(x, by, bw, bh, 6 * scale)
-    ctx.fill()
-  } else {
-    ctx.fillRect(x, by, bw, bh)
+  if (theme.footerBg && theme.footerBg !== 'transparent') {
+    ctx.fillStyle = theme.footerBg
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath()
+      ctx.roundRect(x, by, bw, bh, 6 * scale)
+      ctx.fill()
+    } else {
+      ctx.fillRect(x, by, bw, bh)
+    }
+  }
+  if (theme.footerBorder) {
+    ctx.strokeStyle = theme.footerBorder
+    ctx.lineWidth = 1.5 * scale
+    ctx.setLineDash([4 * scale, 3 * scale])
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath()
+      ctx.roundRect(x, by, bw, bh, 6 * scale)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(x, by, bw, bh)
+    }
+    ctx.setLineDash([])
   }
   ctx.fillStyle = theme.footerColor || '#fff'
   ctx.textAlign = 'center'

@@ -1,5 +1,6 @@
 import { filterStyle } from './preview.js'
 import { drawBackground, drawDecorations, drawTitle, drawFooter } from './decorations.js'
+import { themeRects } from './themeLayout.js'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -23,6 +24,18 @@ function roundedPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x + w, y + h, x, y + h, radius)
   ctx.arcTo(x, y + h, x, y, radius)
   ctx.arcTo(x, y, x + w, y, radius)
+  ctx.closePath()
+}
+
+function archPath(ctx, x, y, w, h, r) {
+  const top = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x, y + top)
+  ctx.arcTo(x, y, x + w, y, top)
+  ctx.arcTo(x + w, y, x + w, y + h, top)
+  ctx.lineTo(x + w, y + h - 10)
+  ctx.arcTo(x + w, y + h, x, y + h, 10)
+  ctx.arcTo(x, y + h, x, y, 10)
   ctx.closePath()
 }
 
@@ -112,8 +125,11 @@ export async function renderStrip({
   const slotRadius = (theme.slotRadius || 6) * decoScale
   const slotBorderWidth = (theme.slotBorderWidth || 2) * decoScale
   const borderColor = theme.borderColor || frameColor || theme.frame
+  const pathFn = theme.frameStyle === 'arch' ? archPath : roundedPath
+  const shadowStyles = ['polaroid', 'rounded', 'gls', 'arch']
+  const rects = themeRects(layout, theme)
 
-  layout.rects.forEach((rect, i) => {
+  rects.forEach((rect, i) => {
     const img = images[i]
     const dx = rect.x * scale
     const dy = rect.y * scale
@@ -122,13 +138,18 @@ export async function renderStrip({
 
     // bingkai slot
     ctx.save()
-    roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+    pathFn(ctx, dx, dy, dw, dh, slotRadius)
     ctx.fillStyle = theme.slotBg
+    if (shadowStyles.includes(theme.frameStyle)) {
+      ctx.shadowColor = 'rgba(0,0,0,.18)'
+      ctx.shadowBlur = 8 * decoScale
+      ctx.shadowOffsetY = 3 * decoScale
+    }
     ctx.fill()
     ctx.restore()
 
     ctx.save()
-    roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+    pathFn(ctx, dx, dy, dw, dh, slotRadius)
     ctx.clip()
     if (supportsFilter && cssFilter) ctx.filter = cssFilter
     if (img) {
@@ -146,7 +167,7 @@ export async function renderStrip({
     // border
     if (slotBorderWidth > 0) {
       ctx.save()
-      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+      pathFn(ctx, dx, dy, dw, dh, slotRadius)
       ctx.lineWidth = slotBorderWidth
       ctx.strokeStyle = borderColor
       if (theme.frameStyle === 'neon') {
@@ -156,19 +177,35 @@ export async function renderStrip({
       ctx.stroke()
       ctx.restore()
     }
+
+    // caption bar ala koran
+    if (theme.slotCaptions && theme.slotCaptions[i]) {
+      const barH = 16 * decoScale
+      ctx.save()
+      ctx.fillStyle = '#111'
+      ctx.fillRect(dx, dy + dh - barH, dw, barH)
+      ctx.fillStyle = '#F4F0E6'
+      ctx.font = `500 ${8 * decoScale}px DM Mono, monospace`
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(theme.slotCaptions[i], dx + 6 * decoScale, dy + dh - barH / 2)
+      ctx.restore()
+    }
   })
 
   if (supportsFilter) ctx.filter = 'none'
 
   // footer / caption
-  if (theme.footer) drawFooter(ctx, theme, canvas.width, canvas.height, decoScale)
-
-  const fontName = theme.captionFont || 'Inter'
-  ctx.fillStyle = theme.caption
-  ctx.font = `500 ${layout.caption.size * scale}px "${fontName}", ${fontName === 'Caveat' ? 'cursive' : 'sans-serif'}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(caption, canvas.width / 2, layout.caption.y * scale)
+  if (theme.footer) {
+    drawFooter(ctx, theme, canvas.width, canvas.height, decoScale)
+  } else {
+    const fontName = theme.captionFont || 'Inter'
+    ctx.fillStyle = theme.caption
+    ctx.font = `500 ${layout.caption.size * scale}px "${fontName}", ${fontName === 'Caveat' ? 'cursive' : 'sans-serif'}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(caption, canvas.width / 2, layout.caption.y * scale)
+  }
 
   // dekorasi di atas
   drawDecorations(ctx, theme.decorations, decoScale)

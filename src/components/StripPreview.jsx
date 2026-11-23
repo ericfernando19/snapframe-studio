@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { filterStyle, defaultCaption } from '../lib/preview.js'
+import { themeRects } from '../lib/themeLayout.js'
 
 function drawCover(ctx, img, dx, dy, dw, dh) {
   const iw = img.naturalWidth || img.width || img.videoWidth
@@ -43,6 +44,7 @@ export default function StripPreview({
 }) {
   const cssFilter = filterStyle(filter, brightness, contrast)
   const captionText = caption || defaultCaption()
+  const rects = themeRects(layout, theme)
 
   const [playing, setPlaying] = useState(null)
   const canvasRefs = useRef([])
@@ -128,7 +130,7 @@ export default function StripPreview({
       role={interactive ? 'group' : undefined}
       aria-label={interactive ? 'Pratinjau strip foto' : undefined}
     >
-      {layout.rects.map((r, i) => {
+      {rects.map((r, i) => {
         const photo = photos[i]
         const isActive = interactive && activeSlot === i
         const isLive = hasLive(i)
@@ -270,10 +272,10 @@ export default function StripPreview({
             fontFamily: (theme.titleFont || '').split(' ').slice(2).join(' ') || theme.captionFont || 'Inter',
             fontSize: `${((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) / layout.w) * 100 * 0.6}cqw`,
             fontWeight: 600,
+            lineHeight: 1.05,
             textShadow: theme.titleShadow ? '0 2px 4px rgba(0,0,0,.35)' : 'none',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'pre-line',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             pointerEvents: 'none',
             zIndex: 2,
           }}
@@ -282,27 +284,54 @@ export default function StripPreview({
         </div>
       )}
 
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: `${(layout.caption.y / layout.h) * 100}%`,
-          transform: 'translate(-50%, -50%)',
-          width: '92%',
-          textAlign: 'center',
-          color: theme.caption,
-          fontFamily: `${theme.captionFont || 'Inter'}, sans-serif`,
-          fontSize: `${(layout.caption.size / layout.w) * 100}cqw`,
-          fontWeight: 500,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          pointerEvents: 'none',
-        }}
-      >
-        {captionText}
-      </div>
+      {theme.footer ? (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '92%',
+            transform: 'translate(-50%, -50%)',
+            padding: '2px 8px',
+            borderRadius: 999,
+            background: theme.footerBg && theme.footerBg !== 'transparent' ? theme.footerBg : 'transparent',
+            border: theme.footerBorder ? `1.5px dashed ${theme.footerBorder}` : 'none',
+            color: theme.footerColor || theme.caption,
+            fontFamily: `${theme.captionFont || 'Inter'}, sans-serif`,
+            fontSize: `${(10 / layout.w) * 100 * 1.4}cqw`,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        >
+          {theme.footer}
+        </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: `${(layout.caption.y / layout.h) * 100}%`,
+            transform: 'translate(-50%, -50%)',
+            width: '92%',
+            textAlign: 'center',
+            color: theme.caption,
+            fontFamily: `${theme.captionFont || 'Inter'}, sans-serif`,
+            fontSize: `${(layout.caption.size / layout.w) * 100}cqw`,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            pointerEvents: 'none',
+          }}
+        >
+          {captionText}
+        </div>
+      )}
 
       {!autoplay && liveClips?.some((c) => c?.frames?.length) && (
         <div

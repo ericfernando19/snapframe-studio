@@ -1,5 +1,7 @@
 import { filterStyle } from './preview.js'
 import { LIVE_FPS } from './live.js'
+import { drawBackground, drawTitle, drawFooter, drawDecorations } from './decorations.js'
+import { themeRects } from './themeLayout.js'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -110,6 +112,11 @@ export async function exportLiveVideo({
   )
 
   const scale = width / layout.w
+  const decoScale = width / 600
+  const rects = themeRects(layout, theme)
+  const slotRadius = (theme.slotRadius || 6) * decoScale
+  const slotBorderWidth = (theme.slotBorderWidth || 2) * decoScale
+  const borderColor = theme.borderColor || frameColor
 
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -119,21 +126,27 @@ export async function exportLiveVideo({
   const drawFrame = (frameIndex) => {
     if (signal?.aborted) throw new Error('cancelled')
     const t = frameIndex / fps
-    ctx.fillStyle = frameColor
-    ctx.fillRect(0, 0, width, height)
+    drawBackground(ctx, theme, width, height)
+    drawTitle(ctx, theme, width, height, decoScale)
 
-    if (cssFilter && cssFilter !== 'none') ctx.filter = cssFilter
-
-    layout.rects.forEach((rect, i) => {
+    rects.forEach((rect, i) => {
       const clip = liveClips[i]
       const dx = rect.x * scale
       const dy = rect.y * scale
       const dw = rect.w * scale
       const dh = rect.h * scale
 
+      // background slot
       ctx.save()
-      roundedPath(ctx, dx, dy, dw, dh, 6 * scale)
+      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+      ctx.fillStyle = theme.slotBg
+      ctx.fill()
+      ctx.restore()
+
+      ctx.save()
+      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
       ctx.clip()
+      if (cssFilter && cssFilter !== 'none') ctx.filter = cssFilter
 
       let drawn = false
       if (clip?.frames?.length) {
@@ -155,21 +168,39 @@ export async function exportLiveVideo({
           ctx.fillRect(dx, dy, dw, dh)
         }
       }
+      ctx.filter = 'none'
       ctx.restore()
+
+      if (slotBorderWidth > 0) {
+        ctx.save()
+        roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+        ctx.lineWidth = slotBorderWidth
+        ctx.strokeStyle = borderColor
+        if (theme.frameStyle === 'neon') {
+          ctx.shadowColor = borderColor
+          ctx.shadowBlur = 12 * decoScale
+        }
+        ctx.stroke()
+        ctx.restore()
+      }
     })
 
-    if (cssFilter) ctx.filter = 'none'
-
-    // caption
-    try {
-      ctx.fillStyle = theme.caption
-      ctx.font = `500 ${Math.round(layout.caption.size * scale)}px ${theme.captionFont || 'Inter'}, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(caption, width / 2, layout.caption.y * scale)
-    } catch {
-      /* ignore */
+    // footer / caption
+    if (theme.footer) {
+      drawFooter(ctx, theme, width, height, decoScale)
+    } else {
+      try {
+        ctx.fillStyle = theme.caption
+        ctx.font = `500 ${Math.round(layout.caption.size * scale)}px ${theme.captionFont || 'Inter'}, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(caption, width / 2, layout.caption.y * scale)
+      } catch {
+        /* ignore */
+      }
     }
+
+    drawDecorations(ctx, theme.decorations, decoScale)
   }
 
   // GIF path

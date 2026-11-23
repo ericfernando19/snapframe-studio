@@ -62,7 +62,6 @@ export function StudioProvider({ children }) {
         themeId,
         frameColor: t.frame,
         filter: t.filter,
-        caption: t.title ? t.title : s.caption,
       }))
     },
     [],
