@@ -85,6 +85,18 @@ export async function renderStrip({
 
   drawBackground(ctx, theme, canvas.width, canvas.height)
 
+  // sprocket film
+  if (theme.frameStyle === 'film') {
+    const holeW = 6 * decoScale
+    const holeH = 10 * decoScale
+    const gap = 16 * decoScale
+    ctx.fillStyle = '#E8E0D0'
+    for (let y = 0; y < canvas.height; y += gap) {
+      ctx.fillRect(7 * decoScale, y + 2 * decoScale, holeW, holeH)
+      ctx.fillRect(canvas.width - 13 * decoScale, y + 2 * decoScale, holeW, holeH)
+    }
+  }
+
   const cssFilter = filterStyle(filter, brightness, contrast)
   const supportsFilter = 'filter' in ctx
 
