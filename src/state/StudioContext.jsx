@@ -57,7 +57,13 @@ export function StudioProvider({ children }) {
   const selectTheme = useCallback(
     (themeId) => {
       const t = getTheme(themeId)
-      setSettings((s) => ({ ...s, themeId, frameColor: null, filter: t.filter }))
+      setSettings((s) => ({
+        ...s,
+        themeId,
+        frameColor: t.frame,
+        filter: t.filter,
+        caption: t.title ? t.title : s.caption,
+      }))
     },
     [],
   )

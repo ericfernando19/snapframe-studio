@@ -256,6 +256,32 @@ export default function StripPreview({
         )
       })}
 
+      {theme.title && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: `${(theme.titleY || 0.07) * 100}%`,
+            transform: 'translate(-50%, -50%)',
+            width: '92%',
+            textAlign: 'center',
+            color: theme.titleColor || theme.caption,
+            fontFamily: (theme.titleFont || '').split(' ').slice(2).join(' ') || theme.captionFont || 'Inter',
+            fontSize: `${((parseFloat((theme.titleFont || '32').match(/(\d+(?:\.\d+)?)px/)?.[1]) || 32) / layout.w) * 100 * 0.6}cqw`,
+            fontWeight: 600,
+            textShadow: theme.titleShadow ? '0 2px 4px rgba(0,0,0,.35)' : 'none',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        >
+          {theme.title}
+        </div>
+      )}
+
       <div
         aria-hidden="true"
         style={{

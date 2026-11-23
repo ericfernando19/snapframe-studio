@@ -1,4 +1,5 @@
 import { filterStyle } from './preview.js'
+import { drawBackground, drawDecorations, drawTitle, drawFooter } from './decorations.js'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -80,8 +81,9 @@ export async function renderStrip({
   canvas.height = Math.round(layout.h * scale)
   const ctx = canvas.getContext('2d')
 
-  ctx.fillStyle = frameColor || theme.frame
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  const decoScale = canvas.width / 600
+
+  drawBackground(ctx, theme, canvas.width, canvas.height)
 
   const cssFilter = filterStyle(filter, brightness, contrast)
   const supportsFilter = 'filter' in ctx
@@ -90,7 +92,14 @@ export async function renderStrip({
     photos.slice(0, layout.slots).map((p) => (p ? loadImage(p) : null)),
   )
 
-  if (supportsFilter && cssFilter) ctx.filter = cssFilter
+  await ensureFonts(theme)
+
+  // judul atas (tema desain)
+  drawTitle(ctx, theme, canvas.width, canvas.height, decoScale)
+
+  const slotRadius = (theme.slotRadius || 6) * decoScale
+  const slotBorderWidth = (theme.slotBorderWidth || 2) * decoScale
+  const borderColor = theme.borderColor || frameColor || theme.frame
 
   layout.rects.forEach((rect, i) => {
     const img = images[i]
@@ -99,32 +108,58 @@ export async function renderStrip({
     const dw = rect.w * scale
     const dh = rect.h * scale
 
+    // bingkai slot
     ctx.save()
-    roundedPath(ctx, dx, dy, dw, dh, 6 * scale)
+    roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+    ctx.fillStyle = theme.slotBg
+    ctx.fill()
+    ctx.restore()
+
+    ctx.save()
+    roundedPath(ctx, dx, dy, dw, dh, slotRadius)
     ctx.clip()
+    if (supportsFilter && cssFilter) ctx.filter = cssFilter
     if (img) {
       drawCover(ctx, img, dx, dy, dw, dh)
     } else {
-      ctx.fillStyle = theme.slotBg
-      ctx.fillRect(dx, dy, dw, dh)
       ctx.fillStyle = theme.slotBg === '#33302C' ? '#8A817A' : '#5E554E'
       ctx.font = `500 ${44 * scale}px Inter, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(`Foto ${i + 1}`, dx + dw / 2, dy + dh / 2)
     }
+    if (supportsFilter) ctx.filter = 'none'
     ctx.restore()
+
+    // border
+    if (slotBorderWidth > 0) {
+      ctx.save()
+      roundedPath(ctx, dx, dy, dw, dh, slotRadius)
+      ctx.lineWidth = slotBorderWidth
+      ctx.strokeStyle = borderColor
+      if (theme.frameStyle === 'neon') {
+        ctx.shadowColor = borderColor
+        ctx.shadowBlur = 12 * decoScale
+      }
+      ctx.stroke()
+      ctx.restore()
+    }
   })
 
   if (supportsFilter) ctx.filter = 'none'
 
-  await ensureFonts(theme)
+  // footer / caption
+  if (theme.footer) drawFooter(ctx, theme, canvas.width, canvas.height, decoScale)
+
   const fontName = theme.captionFont || 'Inter'
   ctx.fillStyle = theme.caption
   ctx.font = `500 ${layout.caption.size * scale}px "${fontName}", ${fontName === 'Caveat' ? 'cursive' : 'sans-serif'}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(caption, canvas.width / 2, layout.caption.y * scale)
+
+  // dekorasi di atas
+  drawDecorations(ctx, theme.decorations, decoScale)
 
   return canvas
 }
