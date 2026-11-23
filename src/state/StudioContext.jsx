@@ -18,6 +18,8 @@ const DEFAULTS = {
   timer: 3,
   format: 'png',
   quality: 'hd',
+  liveEnabled: false,
+  autoplay: false,
 }
 
 function loadSettings() {
@@ -33,6 +35,7 @@ function loadSettings() {
 export function StudioProvider({ children }) {
   const [settings, setSettings] = useState(loadSettings)
   const [photos, setPhotos] = useState([])
+  const [liveClips, setLiveClips] = useState([])
   const [step, setStep] = useState(1)
 
   useEffect(() => {
@@ -63,16 +66,21 @@ export function StudioProvider({ children }) {
     const next = getLayout(layoutId)
     setSettings((s) => ({ ...s, layoutId }))
     setPhotos((prev) => prev.slice(0, next.slots))
+    setLiveClips((prev) => prev.slice(0, next.slots))
   }, [])
 
   const setPhotosSafe = useCallback((updater) => {
     setPhotos((prev) => (typeof updater === 'function' ? updater(prev) : updater))
+  }, [])
+  const setLiveClipsSafe = useCallback((updater) => {
+    setLiveClips((prev) => (typeof updater === 'function' ? updater(prev) : updater))
   }, [])
 
   const resetProject = useCallback(() => {
     const t = getTheme(DEFAULTS.themeId)
     setSettings({ ...DEFAULTS, filter: t.filter })
     setPhotos([])
+    setLiveClips([])
     setStep(1)
   }, [])
 
@@ -95,6 +103,7 @@ export function StudioProvider({ children }) {
       layout,
       settings,
       photos,
+      liveClips,
       step,
       filledCount,
       allFilled,
@@ -104,6 +113,7 @@ export function StudioProvider({ children }) {
       selectTheme,
       selectLayout,
       setPhotos: setPhotosSafe,
+      setLiveClips: setLiveClipsSafe,
       setStep,
       resetProject,
     }),
@@ -112,6 +122,7 @@ export function StudioProvider({ children }) {
       layout,
       settings,
       photos,
+      liveClips,
       step,
       filledCount,
       allFilled,
@@ -121,6 +132,7 @@ export function StudioProvider({ children }) {
       selectTheme,
       selectLayout,
       setPhotosSafe,
+      setLiveClipsSafe,
       resetProject,
     ],
   )

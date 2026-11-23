@@ -6,6 +6,9 @@ export default function CameraView({
   facing,
   slotIndex,
   slotTotal,
+  liveEnabled,
+  liveSupported,
+  onToggleLive,
   onCancel,
   onShoot,
   onSwitch,
@@ -72,6 +75,41 @@ export default function CameraView({
         <div className="absolute left-0 right-0 bottom-3 text-center text-white/85 text-xs font-medium">
           Slot {slotIndex + 1} dari {slotTotal}
         </div>
+
+        <button
+          type="button"
+          onClick={onToggleLive}
+          disabled={!liveSupported}
+          aria-pressed={liveEnabled}
+          aria-label={liveEnabled ? 'Live Photo aktif' : 'Live Photo mati'}
+          title={
+            !liveSupported
+              ? 'Live Photo tidak tersedia di perangkat ini'
+              : liveEnabled
+              ? 'Live Photo aktif'
+              : 'Live Photo mati'
+          }
+          className="absolute top-3 left-3 z-10 flex items-center justify-center rounded-full"
+          style={{
+            width: 44,
+            height: 44,
+            background: liveEnabled ? 'rgba(196,69,43,0.9)' : 'rgba(31,27,24,0.55)',
+            border: '2px solid rgba(255,255,255,0.85)',
+            color: '#fff',
+            cursor: liveSupported ? 'pointer' : 'not-allowed',
+            opacity: liveSupported ? 1 : 0.5,
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+            {liveEnabled ? (
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+            ) : (
+              <line x1="5" y1="19" x2="19" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            )}
+          </svg>
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-3 justify-center items-center">

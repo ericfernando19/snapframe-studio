@@ -1,9 +1,32 @@
+import { useEffect, useRef, useState } from 'react'
 import { filterStyle, defaultCaption } from '../lib/preview.js'
+
+function drawCover(ctx, img, dx, dy, dw, dh) {
+  const iw = img.naturalWidth || img.width || img.videoWidth
+  const ih = img.naturalHeight || img.height || img.videoHeight
+  if (!iw || !ih) return
+  const ir = iw / ih
+  const dr = dw / dh
+  let sw, sh, sx, sy
+  if (ir > dr) {
+    sh = ih
+    sw = ih * dr
+    sx = (iw - sw) / 2
+    sy = 0
+  } else {
+    sw = iw
+    sh = iw / dr
+    sx = 0
+    sy = (ih - sh) / 2
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)
+}
 
 export default function StripPreview({
   theme,
   layout,
   photos = [],
+  liveClips = [],
   frameColor,
   caption,
   filter = 'natural',
@@ -13,10 +36,80 @@ export default function StripPreview({
   interactive = false,
   activeSlot = -1,
   onSelectSlot,
+  onToggleLive,
+  onChooseKeyFrame,
+  autoplay = false,
   className = '',
 }) {
   const cssFilter = filterStyle(filter, brightness, contrast)
   const captionText = caption || defaultCaption()
+
+  const [playing, setPlaying] = useState(null)
+  const canvasRefs = useRef([])
+  const rafRef = useRef(null)
+
+  const hasLive = (i) => Boolean(liveClips?.[i]?.frames?.length)
+
+  // animasi slot live
+  useEffect(() => {
+    const slotsToAnimate = autoplay
+      ? liveClips.map((c, i) => (c?.frames?.length ? i : null)).filter((v) => v !== null)
+      : playing !== null
+      ? [playing]
+      : []
+
+    if (!slotsToAnimate.length) {
+      // bersihkan canvas
+      slotsToAnimate.forEach(() => {})
+      return undefined
+    }
+
+    const start = performance.now()
+    const draw = (now) => {
+      for (const i of slotsToAnimate) {
+        const canvas = canvasRefs.current[i]
+        const clip = liveClips[i]
+        if (!canvas || !clip?.frames?.length) continue
+        const elapsed = (now - start) / 1000
+        let idx
+        if (autoplay) {
+          idx = Math.floor(elapsed * clip.fps) % clip.frames.length
+        } else {
+          idx = Math.min(clip.frames.length - 1, Math.floor(elapsed * clip.fps))
+        }
+        const frame = clip.frames[idx]
+        if (!frame) continue
+        const rect = canvas.getBoundingClientRect()
+        const w = Math.max(1, Math.round(rect.width))
+        const h = Math.max(1, Math.round(rect.height))
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w
+          canvas.height = h
+        }
+        const ctx = canvas.getContext('2d')
+        ctx.clearRect(0, 0, w, h)
+        if (cssFilter && cssFilter !== 'none') ctx.filter = cssFilter
+        drawCover(ctx, frame, 0, 0, w, h)
+        ctx.filter = 'none'
+      }
+
+      if (autoplay) {
+        rafRef.current = requestAnimationFrame(draw)
+      } else if (playing !== null) {
+        const clip = liveClips[playing]
+        const elapsed = (now - start) / 1000
+        if (clip && elapsed * clip.fps < clip.frames.length) {
+          rafRef.current = requestAnimationFrame(draw)
+        } else {
+          setPlaying(null)
+        }
+      }
+    }
+    rafRef.current = requestAnimationFrame(draw)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [playing, autoplay, liveClips, cssFilter])
 
   return (
     <div
@@ -38,6 +131,8 @@ export default function StripPreview({
       {layout.rects.map((r, i) => {
         const photo = photos[i]
         const isActive = interactive && activeSlot === i
+        const isLive = hasLive(i)
+        const isPlaying = autoplay ? isLive : playing === i
         const style = {
           position: 'absolute',
           left: `${(r.x / layout.w) * 100}%`,
@@ -52,46 +147,112 @@ export default function StripPreview({
           boxSizing: 'border-box',
           cursor: interactive ? 'pointer' : 'default',
           transition: 'border-color .18s ease',
+          userSelect: 'none',
         }
 
-        const inner = photo ? (
-          <img
-            src={photo}
-            alt={`Foto ${i + 1}`}
-            className="w-full h-full object-cover pop-in"
-            style={{ display: 'block', filter: cssFilter }}
-          />
-        ) : (
-          <span
-            className="w-full h-full flex items-center justify-center"
-            style={{
-              color: theme.slotBg === '#33302C' ? '#8A817A' : '#5E554E',
-              fontSize: `${(44 / layout.w) * 100}cqw`,
-              fontWeight: 500,
+        return (
+          <div
+            key={i}
+            style={style}
+            onPointerDown={() => {
+              if (isLive && !autoplay) setPlaying(i)
+            }}
+            onPointerUp={() => {
+              if (!autoplay) setPlaying(null)
+            }}
+            onPointerLeave={() => {
+              if (!autoplay) setPlaying(null)
             }}
           >
-            Foto {i + 1}
-          </span>
-        )
+            {interactive ? (
+              <button
+                type="button"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+                onPointerDown={() => {
+                  if (isLive && !autoplay) setPlaying(i)
+                }}
+                onPointerUp={() => {
+                  if (!autoplay) setPlaying(null)
+                }}
+                onPointerLeave={() => {
+                  if (!autoplay) setPlaying(null)
+                }}
+                onClick={() => onSelectSlot?.(i)}
+                aria-label={`Pilih slot foto ${i + 1}${photo ? ' untuk mengambil ulang' : ''}`}
+                aria-pressed={isActive}
+              />
+            ) : null}
 
-        if (!interactive) {
-          return (
-            <div key={i} style={style}>
-              {inner}
-            </div>
-          )
-        }
-        return (
-          <button
-            key={i}
-            type="button"
-            style={style}
-            onClick={() => onSelectSlot?.(i)}
-            aria-label={`Pilih slot foto ${i + 1}${photo ? ' untuk mengambil ulang' : ''}`}
-            aria-pressed={isActive}
-          >
-            {inner}
-          </button>
+            {photo && !(isLive && isPlaying) ? (
+              <img
+                src={photo}
+                alt={`Foto ${i + 1}`}
+                className="w-full h-full object-cover pop-in"
+                style={{ display: 'block', filter: cssFilter, pointerEvents: 'none' }}
+              />
+            ) : !photo ? (
+              <span
+                className="w-full h-full flex items-center justify-center"
+                style={{
+                  color: theme.slotBg === '#33302C' ? '#8A817A' : '#5E554E',
+                  fontSize: `${(44 / layout.w) * 100}cqw`,
+                  fontWeight: 500,
+                  pointerEvents: 'none',
+                }}
+              >
+                Foto {i + 1}
+              </span>
+            ) : null}
+
+            {isLive && (
+              <canvas
+                ref={(el) => (canvasRefs.current[i] = el)}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: isPlaying ? 'block' : 'none',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+
+            {isLive && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleLive?.(i)
+                }}
+                className="absolute top-1 right-1 z-20"
+                style={{
+                  background: 'rgba(31,27,24,0.7)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '2px 6px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  cursor: 'pointer',
+                }}
+                aria-label={`Matikan Live slot ${i + 1}`}
+              >
+                LIVE
+              </button>
+            )}
+
+            {!isLive && onChooseKeyFrame && liveClips?.[i] === undefined && null}
+          </div>
         )
       })}
 
@@ -116,6 +277,14 @@ export default function StripPreview({
       >
         {captionText}
       </div>
+
+      {!autoplay && liveClips?.some((c) => c?.frames?.length) && (
+        <div
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white/90 bg-black/40 px-2 py-0.5 rounded-full pointer-events-none"
+        >
+          Tahan untuk memutar
+        </div>
+      )}
     </div>
   )
 }

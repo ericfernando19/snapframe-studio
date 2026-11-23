@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStudio } from '../state/StudioContext.jsx'
 import StripPreview from '../components/StripPreview.jsx'
@@ -13,6 +13,7 @@ import {
   shareToInstagram,
   shareToWhatsApp,
 } from '../lib/download.js'
+import { exportLiveVideo, mp4Supported } from '../lib/exportLive.js'
 
 const FORMATS = [
   { id: 'png', label: 'PNG' },
@@ -31,6 +32,8 @@ export default function Hasil() {
     layout,
     settings,
     photos,
+    liveClips,
+    setLiveClips,
     effectiveFilter,
     frameColor,
     update,
@@ -39,9 +42,29 @@ export default function Hasil() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [progress, setProgress] = useState(0)
+  const [controller, setController] = useState(null)
+
+  useEffect(() => {
+    if (!hasLive && ['mp4', 'webm', 'gif'].includes(settings.format)) {
+      update({ format: 'png' })
+    }
+  }, [hasLive, settings.format, update])
 
   const caption = settings.caption || defaultCaption()
   const filled = photos.slice(0, layout.slots).filter(Boolean).length
+  const hasLive = (liveClips || []).some((c) => c?.frames?.length)
+
+  const formats = [
+    { id: 'png', label: 'PNG' },
+    { id: 'jpg', label: 'JPG' },
+    { id: 'pdf', label: 'PDF siap cetak' },
+  ]
+  if (hasLive) {
+    if (mp4Supported()) formats.push({ id: 'mp4', label: 'MP4 (video)' })
+    else formats.push({ id: 'webm', label: 'WebM (video)' })
+    formats.push({ id: 'gif', label: 'GIF' })
+  }
 
   const say = (msg) => {
     setNotice(msg)
@@ -67,6 +90,52 @@ export default function Hasil() {
       say('Belum ada foto untuk diunduh.')
       return
     }
+    const fmt = settings.format
+    const isLiveFmt = ['mp4', 'webm', 'gif'].includes(fmt)
+    if (isLiveFmt) {
+      if (!hasLive) {
+        say('Tidak ada slot Live untuk diekspor.')
+        return
+      }
+      setBusy('download')
+      setProgress(0)
+      const ctrl = new AbortController()
+      setController(ctrl)
+      try {
+        const blob = await exportLiveVideo({
+          theme,
+          layout,
+          photos,
+          liveClips,
+          settings: { ...settings, caption },
+          format: fmt,
+          resolution: settings.quality,
+          onProgress: (p) => setProgress(p),
+          signal: ctrl.signal,
+        })
+        const ext = fmt === 'gif' ? 'gif' : fmt === 'webm' ? 'webm' : 'mp4'
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `SnapFrame-${Date.now()}.${ext}`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 4000)
+        say('File bergerak diunduh.')
+      } catch (e) {
+        if (e?.message === 'cancelled') say('Ekspor dibatalkan.')
+        else if (e?.message === 'mp4-unsupported' || e?.message === 'mp4-config-unsupported')
+          say('Format MP4 tidak didukung di perangkat ini. Coba GIF.')
+        else say(e?.message || 'Gagal membuat file. Coba lagi.')
+      } finally {
+        setBusy(null)
+        setController(null)
+        setProgress(0)
+      }
+      return
+    }
+
     setBusy('download')
     try {
       const canvas = await makeCanvas()
@@ -136,12 +205,28 @@ export default function Hasil() {
               theme={theme}
               layout={layout}
               photos={photos}
+              liveClips={liveClips}
               frameColor={frameColor}
               caption={caption}
               filter={effectiveFilter}
               brightness={settings.brightness}
               contrast={settings.contrast}
               width={220}
+              autoplay={!!settings.autoplay}
+              onToggleLive={(i) => {
+                setLiveClips((prev) => {
+                  const next = Array.from({ length: layout.slots }, (_, j) => (prev || [])[j] || null)
+                  if (next[i]) {
+                    try {
+                      next[i].frames?.forEach((f) => f?.close?.())
+                    } catch {
+                      /* ignore */
+                    }
+                    next[i] = null
+                  }
+                  return next
+                })
+              }}
             />
           </div>
 
@@ -157,7 +242,7 @@ export default function Hasil() {
               Format
             </div>
             <div className="flex flex-wrap gap-2.5" role="group" aria-labelledby="format-label">
-              {FORMATS.map((f) => (
+              {formats.map((f) => (
                 <button
                   key={f.id}
                   type="button"
@@ -195,6 +280,30 @@ export default function Hasil() {
             >
               {busy === 'download' ? 'Membuat file...' : 'Unduh Foto'}
             </button>
+
+            {busy === 'download' && progress > 0 && (
+              <div className="mt-3">
+                <div className="w-full h-2 bg-line rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#C4452B] transition-all"
+                    style={{ width: `${Math.round(progress * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted mt-1 mb-0 text-center">
+                  {Math.round(progress * 100)}%
+                </p>
+              </div>
+            )}
+
+            {busy === 'download' && controller && (
+              <button
+                type="button"
+                className="btn2 w-full mt-3"
+                onClick={() => controller.abort()}
+              >
+                Batal
+              </button>
+            )}
 
             <div className="lbl mt-7" id="share-label">
               Bagikan

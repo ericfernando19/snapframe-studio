@@ -15,6 +15,16 @@ import {
   startCamera,
   stopCamera,
 } from '../lib/camera.js'
+import {
+  liveSupported,
+  startLiveBuffer,
+  capturePostFrames,
+  closeClip,
+  bitmapToDataUrl,
+  LIVE_FPS,
+  LIVE_MAX_SIDE,
+  LIVE_DURATION_MS,
+} from '../lib/live.js'
 
 const FILTERS = [
   { id: 'natural', label: 'Natural' },
@@ -43,6 +53,7 @@ export default function Studio() {
     layout,
     settings,
     photos,
+    liveClips,
     filledCount,
     allFilled,
     effectiveFilter,
@@ -51,6 +62,7 @@ export default function Studio() {
     selectTheme,
     selectLayout,
     setPhotos,
+    setLiveClips,
     setStep,
   } = useStudio()
   const navigate = useNavigate()
@@ -73,6 +85,10 @@ export default function Studio() {
   const camErrorRef = useRef(null)
   const fileInputRef = useRef(null)
   const noticeTimer = useRef(null)
+  const liveBufferRef = useRef(null)
+  const [isVisible, setIsVisible] = useState(true)
+  const [keyFrameSlot, setKeyFrameSlot] = useState(null)
+  const [keyFrameUrls, setKeyFrameUrls] = useState([])
 
   const showNotice = useCallback((msg) => {
     setNotice(msg)
@@ -89,6 +105,13 @@ export default function Studio() {
     const slot = Math.min(activeSlot, layout.slots - 1)
     return [slot]
   }, [photos, layout.slots, activeSlot])
+
+  useEffect(() => {
+    const onVis = () => setIsVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', onVis)
+    onVis()
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   /* ---------- kamera ---------- */
   useEffect(() => {
@@ -138,6 +161,24 @@ export default function Studio() {
     }
   }, [mode, countdown, camError])
 
+  useEffect(() => {
+    // hentikan buffer jika Live dimatikan / kamera off / tab tersembunyi
+    if (liveBufferRef.current) {
+      liveBufferRef.current.stop()
+      liveBufferRef.current = null
+    }
+    if (mode !== 'camera' || !settings.liveEnabled || !isVisible) return
+    if (!videoRef.current) return
+    const buf = startLiveBuffer(videoRef.current, { mirror })
+    liveBufferRef.current = buf
+    return () => {
+      if (liveBufferRef.current === buf) {
+        buf.stop()
+        liveBufferRef.current = null
+      }
+    }
+  }, [mode, settings.liveEnabled, isVisible, mirror])
+
   const exitCamera = useCallback(() => {
     cancelRef.current = true
     shootResolver.current?.(false)
@@ -178,9 +219,62 @@ export default function Studio() {
       })
       setFlash(true)
       setTimeout(() => setFlash(false), 460)
+
+      // Tangkap klip Live bila aktif
+      if (settings.liveEnabled && liveBufferRef.current) {
+        const buf = liveBufferRef.current
+        const preFrames = buf.frames.map((f) => f.bitmap)
+        // clone bitmaps agar tidak ikut dibebaskan oleh buffer
+        Promise.all(preFrames.map((b) => (b ? createImageBitmap(b) : null)))
+          .then(async (clones) => {
+            const validPre = clones.filter(Boolean)
+            const width = validPre[0]?.width || LIVE_MAX_SIDE
+            const height = validPre[0]?.height || Math.round((LIVE_MAX_SIDE * 3) / 4)
+            const clip = {
+              id: `live-${Date.now()}-${idx}`,
+              slotIndex: idx,
+              fps: LIVE_FPS,
+              width,
+              height,
+              frames: validPre,
+              keyFrameIndex: validPre.length ? validPre.length - 1 : 0,
+              shutterIndex: validPre.length,
+              pending: true,
+            }
+            setLiveClips((prev) => {
+              const next = Array.from({ length: layout.slots }, (_, i) => prev[i] || null)
+              // bebaskan klip lama
+              if (next[idx]) closeClip(next[idx])
+              next[idx] = clip
+              return next
+            })
+
+            // rekam pasca-rana di latar belakang
+            capturePostFrames(videoRef.current, { mirror }).then((post) => {
+              setLiveClips((prev) => {
+                const next = [...prev]
+                const cur = next[idx]
+                if (!cur || cur.id !== clip.id) return prev
+                const frames = [...cur.frames, ...post]
+                const updated = { ...cur, frames, pending: false, shutterIndex: validPre.length }
+                // update dimensi
+                if (frames[0]) {
+                  updated.width = frames[0].width
+                  updated.height = frames[0].height
+                }
+                next[idx] = updated
+                return next
+              })
+            })
+          })
+          .catch(() => {
+            /* abaikan */
+          })
+      }
+
       return true
     },
-    [mirror, layout.slots, setPhotos, showNotice],
+    [mirror, layout.slots, setPhotos, setLiveClips, showNotice, settings.liveEnabled],
   )
 
   const runSequence = useCallback(
@@ -242,6 +336,28 @@ export default function Studio() {
     await runSequence(targets)
   }, [runSequence, targets, showNotice])
 
+  const toggleLive = useCallback(() => {
+    if (!liveSupported()) {
+      showNotice('Live Photo tidak didukung di perangkat ini.')
+      return
+    }
+    if (!settings.liveEnabled) {
+      const seen = localStorage.getItem('snapframe.live.notice.v1')
+      if (!seen) {
+        const ok = window.confirm(
+          'Live Photo merekam klip singkat (~3 detik) di perangkatmu. Klip tidak diunggah ke server. Aktifkan?',
+        )
+        if (!ok) return
+        try {
+          localStorage.setItem('snapframe.live.notice.v1', '1')
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    update({ liveEnabled: !settings.liveEnabled })
+  }, [settings.liveEnabled, update, showNotice])
+
   const switchFacing = useCallback(() => {
     setFacing((f) => (f === 'user' ? 'environment' : 'user'))
   }, [])
@@ -297,6 +413,64 @@ export default function Studio() {
   )
 
   useEffect(() => () => clearTimeout(noticeTimer.current), [])
+
+  const toggleLiveSlot = useCallback(
+    (idx) => {
+      setLiveClips((prev) => {
+        const next = Array.from({ length: layout.slots }, (_, i) => prev[i] || null)
+        if (next[idx]) {
+          closeClip(next[idx])
+          next[idx] = null
+          showNotice('Live dimatikan untuk slot ini.')
+        } else {
+          showNotice('Slot ini tidak memiliki klip Live.')
+        }
+        return next
+      })
+    },
+    [layout.slots, showNotice, setLiveClips],
+  )
+
+  const openKeyFrame = useCallback(
+    (idx) => {
+      const clip = liveClips[idx]
+      if (!clip || !clip.frames?.length) {
+        showNotice('Slot ini tidak memiliki klip Live.')
+        return
+      }
+      setKeyFrameSlot(idx)
+      setKeyFrameUrls(clip.frames.map((f) => bitmapToDataUrl(f, 0.7)))
+    },
+    [liveClips, showNotice],
+  )
+
+  const closeKeyFrame = useCallback(() => {
+    setKeyFrameSlot(null)
+    setKeyFrameUrls([])
+  }, [])
+
+  const applyKeyFrame = useCallback(
+    (frameIdx) => {
+      if (keyFrameSlot === null) return
+      const idx = keyFrameSlot
+      const clip = liveClips[idx]
+      if (!clip || !clip.frames?.[frameIdx]) return
+      const url = bitmapToDataUrl(clip.frames[frameIdx], 0.92)
+      setPhotos((prev) => {
+        const next = Array.from({ length: layout.slots }, (_, i) => prev[i] || null)
+        next[idx] = url
+        return next
+      })
+      setLiveClips((prev) => {
+        const next = [...prev]
+        if (next[idx]) next[idx] = { ...next[idx], keyFrameIndex: frameIdx }
+        return next
+      })
+      closeKeyFrame()
+      showNotice('Frame utama diperbarui.')
+    },
+    [keyFrameSlot, liveClips, layout.slots, setPhotos, setLiveClips, showNotice, closeKeyFrame],
+  )
 
   const goResult = () => {
     if (filledCount === 0) {
@@ -376,6 +550,9 @@ export default function Studio() {
           facing={facing}
           slotIndex={Math.min(activeSlot, layout.slots - 1)}
           slotTotal={layout.slots}
+          liveEnabled={!!settings.liveEnabled}
+          liveSupported={liveSupported()}
+          onToggleLive={toggleLive}
           onCancel={exitCamera}
           onShoot={requestShoot}
           onSwitch={switchFacing}
@@ -387,6 +564,7 @@ export default function Studio() {
             theme={theme}
             layout={layout}
             photos={photos}
+            liveClips={liveClips}
             frameColor={frameColor}
             caption={effectiveCaption}
             filter={effectiveFilter}
@@ -396,6 +574,9 @@ export default function Studio() {
             interactive
             activeSlot={activeSlot}
             onSelectSlot={(i) => setActiveSlot(i)}
+            onToggleLive={toggleLiveSlot}
+            onChooseKeyFrame={openKeyFrame}
+            autoplay={!!settings.autoplay}
           />
 
           <div className="flex flex-wrap gap-2.5 justify-center" role="group" aria-label="Hitung mundur">
@@ -445,12 +626,16 @@ export default function Studio() {
             theme={theme}
             layout={layout}
             photos={photos}
+            liveClips={liveClips}
             frameColor={frameColor}
             caption={effectiveCaption}
             filter={effectiveFilter}
             brightness={settings.brightness}
             contrast={settings.contrast}
             width="min(54vw, 200px)"
+            onToggleLive={toggleLiveSlot}
+            onChooseKeyFrame={openKeyFrame}
+            autoplay={!!settings.autoplay}
           />
         </div>
       )}
@@ -526,6 +711,34 @@ export default function Studio() {
         placeholder={defaultCaption()}
         onChange={(e) => update({ caption: e.target.value })}
       />
+
+      {liveClips.some(Boolean) && (
+        <div className="mt-6">
+          <div className="lbl">Live Photo</div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!settings.autoplay}
+              onChange={(e) => update({ autoplay: e.target.checked })}
+            />
+            Putar otomatis di pratinjau
+          </label>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {liveClips.map((c, i) =>
+              c ? (
+                <button
+                  key={i}
+                  type="button"
+                  className="chip"
+                  onClick={() => openKeyFrame(i)}
+                >
+                  Pilih frame utama slot {i + 1}
+                </button>
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
@@ -617,6 +830,44 @@ export default function Studio() {
               Lanjut ke Unduh
             </button>
           )}
+        </div>
+      )}
+
+      {keyFrameSlot !== null && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-card w-full max-w-2xl p-5 max-h-[80vh] overflow-auto">
+            <h3 className="h text-[20px] mb-3">Pilih frame utama</h3>
+            <p className="text-sm text-muted mb-3">
+              Ketuk frame untuk menjadikannya foto utama slot {keyFrameSlot + 1}.
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-3">
+              {keyFrameUrls.map((u, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => applyKeyFrame(i)}
+                  className="shrink-0 rounded-lg overflow-hidden"
+                  style={{
+                    border:
+                      liveClips[keyFrameSlot]?.keyFrameIndex === i
+                        ? '3px solid #C4452B'
+                        : '2px solid #D9CFC3',
+                  }}
+                >
+                  <img
+                    src={u}
+                    alt={`Frame ${i + 1}`}
+                    style={{ width: 120, height: 90, objectFit: 'cover', display: 'block' }}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" className="btn2" onClick={closeKeyFrame}>
+                Batal
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
