@@ -54,7 +54,7 @@ export default function StripPreview({
   const headerCqw = (Math.min(...rects.map((r) => r.y)) / layout.w) * 100
   const titleCqw = Math.max(
     4.2,
-    Math.min(baseTitleCqw * 1.2, (headerCqw / (titleLines * 1.18)) * 0.82),
+    Math.min(baseTitleCqw * 1.15, (headerCqw / (titleLines * 1.18)) * 0.82),
   )
 
   const [playing, setPlaying] = useState(null)

@@ -145,7 +145,7 @@ export function drawTitle(ctx, theme, w, h, scale, opts = {}) {
   const widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
   const neededHeight = lines.length * fontSize * 1.08
   if (widest > 0) {
-    const factor = Math.min(1.35, maxWidth / widest, maxHeight / neededHeight)
+    const factor = Math.min(1.15, maxWidth / widest, maxHeight / neededHeight)
     if (Number.isFinite(factor) && factor > 0 && Math.abs(factor - 1) > 0.02) {
       fontSize = Math.max(7, fontSize * factor)
       currentFont = currentFont.replace(/(\d+(?:\.\d+)?)px/, `${fontSize}px`)
